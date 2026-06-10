@@ -123,13 +123,11 @@ function applyTransitionEffect(mode) {
 }
 
 function setOperatorAnimation(animationName) {
-  elements.operatorImage.className = "operator";
-  elements.operatorImage.classList.add(`operator--${animationName}`);
+  elements.operatorImage.setAttribute("class", `operator operator--${animationName}`);
 }
 
 function setRadarAnimation(animationName) {
-  elements.radarData.className = "radar__data";
-  elements.radarData.classList.add(`radar__data--${animationName}`);
+  elements.radarData.setAttribute("class", `radar__data radar__data--${animationName}`);
 }
 
 function renderMeta() {
@@ -228,4 +226,3 @@ async function bootstrap() {
 }
 
 bootstrap();
-

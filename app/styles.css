@@ -30,6 +30,7 @@ body {
     radial-gradient(circle at 10% 10%, rgba(255, 109, 61, 0.18), transparent 24%),
     radial-gradient(circle at 90% 16%, rgba(247, 186, 117, 0.15), transparent 20%),
     linear-gradient(135deg, #070b12, #101725 48%, #0b1019);
+  overflow: hidden;
 }
 
 code,
@@ -41,7 +42,7 @@ pre {
   display: grid;
   grid-template-columns: minmax(320px, 420px) minmax(520px, 1fr);
   gap: 28px;
-  min-height: 100vh;
+  height: 100vh;
   padding: 28px;
 }
 
@@ -55,10 +56,12 @@ pre {
 }
 
 .overview {
+  min-height: 0;
   padding: 28px;
   display: flex;
   flex-direction: column;
   gap: 18px;
+  overflow: auto;
 }
 
 .overview__label,
@@ -146,6 +149,7 @@ pre {
 }
 
 .stage-shell {
+  min-height: 0;
   padding: 22px;
   display: flex;
   align-items: center;
@@ -154,7 +158,9 @@ pre {
 
 .stage-wrap {
   position: relative;
-  width: min(100%, 920px);
+  height: min(100%, calc(100vh - 100px));
+  width: auto;
+  max-width: 100%;
   aspect-ratio: 9 / 16;
   border-radius: 34px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -471,8 +477,18 @@ pre {
 }
 
 @media (max-width: 1200px) {
+  body {
+    overflow: auto;
+  }
+
   .shell {
     grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .stage-wrap {
+    width: min(100%, 920px);
+    height: auto;
   }
 }
 
@@ -496,4 +512,3 @@ pre {
     padding: 18px;
   }
 }
-

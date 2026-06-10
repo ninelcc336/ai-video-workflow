@@ -56,6 +56,12 @@ async function serveFile(filePath, response) {
 
 const server = createServer(async (request, response) => {
   try {
+    if ((request.url || "/").split("?")[0] === "/favicon.ico") {
+      response.writeHead(204);
+      response.end();
+      return;
+    }
+
     const { absolutePath, fallbackPath } = safeResolve(request.url || "/");
 
     try {
