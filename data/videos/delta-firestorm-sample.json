@@ -1,0 +1,65 @@
+{
+  "meta": {
+    "title": "烽火地带干员强度面板",
+    "series": "delta-force",
+    "topic": "operators",
+    "durationPerItem": 5
+  },
+  "theme": {
+    "background": "ember-grid",
+    "radarAxes": ["信息", "机动", "压制", "生存", "功能", "难度"]
+  },
+  "animation": {
+    "characterEnter": "slide-left-soft",
+    "radarBuild": "scale-grow",
+    "transition": "hard-cut"
+  },
+  "items": [
+    {
+      "id": "jifeng",
+      "name": "疾风",
+      "displayName": "张姐",
+      "image": "/assets/operators/jifeng.png",
+      "scores": {
+        "信息": 6.5,
+        "机动": 9.6,
+        "压制": 7.8,
+        "生存": 8.7,
+        "功能": 6.2,
+        "难度": 8.9
+      },
+      "sources": ["官方技能描述", "社区打法总结"]
+    },
+    {
+      "id": "bee-doctor",
+      "name": "蜂医",
+      "displayName": "蜂医",
+      "image": "/assets/operators/jifeng.png",
+      "scores": {
+        "信息": 5.9,
+        "机动": 5.1,
+        "压制": 6.7,
+        "生存": 8.4,
+        "功能": 9.3,
+        "难度": 5.8
+      },
+      "sources": ["样例占位数据"]
+    },
+    {
+      "id": "shepherd",
+      "name": "牧羊人",
+      "displayName": "牧羊人",
+      "image": "/assets/operators/jifeng.png",
+      "scores": {
+        "信息": 8.2,
+        "机动": 6.2,
+        "压制": 7.4,
+        "生存": 7.2,
+        "功能": 8.8,
+        "难度": 7.1
+      },
+      "sources": ["样例占位数据"]
+    }
+  ]
+}
+

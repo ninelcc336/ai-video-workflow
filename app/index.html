@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Radar Panel Preview</title>
+    <link rel="stylesheet" href="/app/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="overview">
+        <div class="overview__label">Radar Panel Pipeline</div>
+        <h1 class="overview__title">填表驱动预览</h1>
+        <p class="overview__text">
+          当前页面直接读取 <code>video.json</code>，把角色数据灌进固定模板。改数据就能看效果，不用重剪结构。
+        </p>
+
+        <div class="overview__cards">
+          <article class="info-card">
+            <div class="info-card__label">视频</div>
+            <div class="info-card__value" id="video-title">加载中</div>
+          </article>
+          <article class="info-card">
+            <div class="info-card__label">角色数</div>
+            <div class="info-card__value" id="item-count">-</div>
+          </article>
+          <article class="info-card">
+            <div class="info-card__label">单页时长</div>
+            <div class="info-card__value" id="duration-per-item">-</div>
+          </article>
+        </div>
+
+        <div class="control-strip">
+          <button class="control-strip__button" id="toggle-play">暂停</button>
+          <button class="control-strip__button control-strip__button--ghost" id="prev-item">上一个</button>
+          <button class="control-strip__button control-strip__button--ghost" id="next-item">下一个</button>
+        </div>
+
+        <div class="config-grid">
+          <article class="config-card">
+            <div class="config-card__label">人物动画</div>
+            <div class="config-card__value" id="character-enter">-</div>
+          </article>
+          <article class="config-card">
+            <div class="config-card__label">雷达动画</div>
+            <div class="config-card__value" id="radar-build">-</div>
+          </article>
+          <article class="config-card">
+            <div class="config-card__label">切场</div>
+            <div class="config-card__value" id="transition-mode">-</div>
+          </article>
+        </div>
+
+        <div class="status-line" id="status-line"></div>
+        <pre class="error-box" id="error-box" hidden></pre>
+      </section>
+
+      <section class="stage-shell">
+        <div class="stage-wrap">
+          <div class="flash-layer" id="flash-layer"></div>
+          <div class="video-stage" id="video-stage">
+            <div class="video-stage__nameplate">
+              <div class="video-stage__alias" id="display-name">加载中</div>
+            </div>
+
+            <div class="video-stage__left">
+              <img class="operator operator--slide-left-soft" id="operator-image" alt="">
+            </div>
+
+            <div class="video-stage__right">
+              <div class="radar" id="radar-root">
+                <div class="radar__label radar__label--top">信息</div>
+                <div class="radar__label radar__label--top-right">机动</div>
+                <div class="radar__label radar__label--bottom-right">压制</div>
+                <div class="radar__label radar__label--bottom">生存</div>
+                <div class="radar__label radar__label--bottom-left">功能</div>
+                <div class="radar__label radar__label--top-left">难度</div>
+                <svg viewBox="0 0 600 600" aria-label="radar chart">
+                  <g id="radar-grid"></g>
+                  <polygon id="radar-data" class="radar__data radar__data--scale-grow" points=""></polygon>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/app/main.js"></script>
+  </body>
+</html>
+
