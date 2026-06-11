@@ -1,4 +1,5 @@
 const DEFAULT_VIDEO_PATH = "/data/videos/delta-firestorm-sample.json";
+const OPERATOR_IMAGE_MAP_PATH = "/data/assets/operator-image-map.json";
 const AXES = ["信息", "机动", "压制", "生存", "功能", "难度"];
 const CENTER = 300;
 const OUTER_RADIUS = 230;
@@ -61,6 +62,45 @@ function validateConfig(config) {
       assert(score >= 0 && score <= 10, `Item ${item.id} score out of range for ${axis}.`);
     }
   }
+}
+
+function normalizeLookupKey(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function normalizeImageMap(rawMap) {
+  const normalized = {};
+  for (const [key, value] of Object.entries(rawMap || {})) {
+    normalized[normalizeLookupKey(key)] = value;
+  }
+  return normalized;
+}
+
+function resolveItemImage(item, imageMap) {
+  if (item.image) {
+    return item.image;
+  }
+
+  const candidates = [item.imageKey, item.displayName, item.name];
+  for (const candidate of candidates) {
+    const lookupKey = normalizeLookupKey(candidate);
+    if (!lookupKey) continue;
+    if (imageMap[lookupKey]) {
+      return imageMap[lookupKey];
+    }
+  }
+
+  return "";
+}
+
+function resolveConfigImages(config, imageMap) {
+  return {
+    ...config,
+    items: config.items.map((item) => ({
+      ...item,
+      image: resolveItemImage(item, imageMap)
+    }))
+  };
 }
 
 function buildRadarGrid() {
@@ -190,11 +230,19 @@ function togglePlayback() {
 }
 
 async function loadConfig() {
-  const response = await fetch(getVideoPath(), { cache: "no-store" });
-  if (!response.ok) {
-    throw new Error(`Failed to load config: ${response.status}`);
+  const [configResponse, imageMapResponse] = await Promise.all([
+    fetch(getVideoPath(), { cache: "no-store" }),
+    fetch(OPERATOR_IMAGE_MAP_PATH, { cache: "no-store" })
+  ]);
+  if (!configResponse.ok) {
+    throw new Error(`Failed to load config: ${configResponse.status}`);
   }
-  return response.json();
+  if (!imageMapResponse.ok) {
+    throw new Error(`Failed to load operator image map: ${imageMapResponse.status}`);
+  }
+
+  const [config, rawImageMap] = await Promise.all([configResponse.json(), imageMapResponse.json()]);
+  return resolveConfigImages(config, normalizeImageMap(rawImageMap));
 }
 
 function bindEvents() {

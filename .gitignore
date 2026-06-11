@@ -3,3 +3,9 @@ node_modules/
 .superpowers/
 preview-output/
 .playwright-mcp
+renders/
+.tmp-hyperframes-init/
+.hf-bin/
+/index.html
+/meta.json
+/radar-preview-current.png

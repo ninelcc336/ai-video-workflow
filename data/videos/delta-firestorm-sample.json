@@ -49,7 +49,7 @@
       "id": "shepherd",
       "name": "牧羊人",
       "displayName": "牧羊人",
-      "image": "/assets/operators/jifeng.png",
+      "imageKey": "牧羊人",
       "scores": {
         "信息": 8.2,
         "机动": 6.2,
@@ -62,4 +62,3 @@
     }
   ]
 }
-

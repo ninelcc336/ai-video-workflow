@@ -1,0 +1,5 @@
+
+> radar-panel-video-pipeline@0.1.0 dev
+> node scripts/dev-server.mjs
+
+Preview server running at http://127.0.0.1:4173
