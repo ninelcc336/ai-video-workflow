@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "node scripts/dev-server.mjs",
     "start": "node scripts/dev-server.mjs",
-    "validate:sample": "node scripts/validate-video-config.mjs data/videos/delta-firestorm-sample.json",
-    "build:video": "node scripts/build-hyperframes-video.mjs data/videos/delta-firestorm-sample.json",
+    "validate:sample": "node scripts/validate-video-config.mjs",
+    "build:video": "node scripts/build-hyperframes-video.mjs",
     "hf:preview": "npm run build:video && node scripts/run-hyperframes.mjs preview",
     "hf:lint": "npm run build:video && node scripts/run-hyperframes.mjs lint",
     "hf:validate": "npm run build:video && node scripts/run-hyperframes.mjs validate",

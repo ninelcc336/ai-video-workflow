@@ -1,4 +1,4 @@
-const DEFAULT_VIDEO_PATH = "/data/videos/delta-firestorm-sample.json";
+const ACTIVE_VIDEO_PATH = "/data/videos/active-video.json";
 const OPERATOR_IMAGE_MAP_PATH = "/data/assets/operator-image-map.json";
 const AXES = ["信息", "机动", "压制", "生存", "功能", "难度"];
 const CENTER = 300;
@@ -34,9 +34,24 @@ const elements = {
   videoTitle: document.querySelector("#video-title")
 };
 
-function getVideoPath() {
+async function getVideoPath() {
   const params = new URLSearchParams(window.location.search);
-  return params.get("video") || DEFAULT_VIDEO_PATH;
+  const directVideoPath = params.get("video");
+  if (directVideoPath) {
+    return directVideoPath;
+  }
+
+  const response = await fetch(ACTIVE_VIDEO_PATH, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`Failed to load active video config: ${response.status}`);
+  }
+
+  const activeConfig = await response.json();
+  if (!activeConfig?.videoConfig) {
+    throw new Error("Missing `videoConfig` in active video config.");
+  }
+
+  return activeConfig.videoConfig;
 }
 
 function assert(condition, message) {
@@ -243,8 +258,9 @@ function togglePlayback() {
 }
 
 async function loadConfig() {
+  const videoPath = await getVideoPath();
   const [configResponse, imageMapResponse] = await Promise.all([
-    fetch(getVideoPath(), { cache: "no-store" }),
+    fetch(videoPath, { cache: "no-store" }),
     fetch(OPERATOR_IMAGE_MAP_PATH, { cache: "no-store" })
   ]);
   if (!configResponse.ok) {

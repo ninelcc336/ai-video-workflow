@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadVideoConfig, REQUIRED_AXES } from "./video-config.mjs";
+import { loadActiveVideoPath } from "./active-video-config.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -266,7 +267,7 @@ function buildCompositionData(config) {
 }
 
 async function main() {
-  const fileArg = process.argv[2] || "data/videos/delta-firestorm-sample.json";
+  const fileArg = process.argv[2] || await loadActiveVideoPath(rootDir);
   const { config } = await loadVideoConfig(rootDir, fileArg);
   const compositionData = buildCompositionData(config);
   const sceneMarkup = compositionData.items
