@@ -17,6 +17,15 @@ const OUTER_RADIUS = 254;
 const CENTER = 320;
 const ITEM_GAP_SECONDS = 0;
 
+function getRadarScaleConfig(theme) {
+  const radarScaleMax = Number(theme?.radarScaleMax ?? 10);
+  const radarOverflowMax = Number(theme?.radarOverflowMax ?? radarScaleMax);
+  return {
+    radarScaleMax,
+    radarOverflowMax
+  };
+}
+
 function getAngle(index) {
   return (-90 + index * 60) * (Math.PI / 180);
 }
@@ -201,7 +210,7 @@ function buildSceneMarkup(item, index, radarGridMarkup, radarAxes, durationPerIt
                 ${labelMarkup}
                 <svg viewBox="0 0 640 640" aria-label="radar chart">
                   <g>${radarGridMarkup}</g>
-                  <polygon id="radar-data-${index}" class="radar-data" points="${item.points}"></polygon>
+                  <polygon id="radar-data-${index}" class="radar-data${item.hasOverflow ? " radar-data--overflow" : ""}" points="${item.points}"></polygon>
                 </svg>
               </div>
             </div>
@@ -211,12 +220,14 @@ function buildSceneMarkup(item, index, radarGridMarkup, radarAxes, durationPerIt
 }
 
 function buildItemData(config) {
+  const { radarScaleMax } = getRadarScaleConfig(config.theme);
   return config.items.map((item, index) => {
     const displayName = item.displayName || item.name;
-    const scores = REQUIRED_AXES.map((axis) => Number(item.scores[axis]) / 10);
+    const scores = REQUIRED_AXES.map((axis) => Number(item.scores[axis]) / radarScaleMax);
     const points = pointsToAttribute(getPolygonPoints(scores));
     const sceneStart = index * (Number(config.meta.durationPerItem) + ITEM_GAP_SECONDS);
     const sceneEnd = sceneStart + Number(config.meta.durationPerItem);
+    const hasOverflow = REQUIRED_AXES.some((axis) => Number(item.scores[axis]) > radarScaleMax);
 
     return {
       id: item.id,
@@ -225,6 +236,7 @@ function buildItemData(config) {
       image: normalizeImagePath(item.image),
       points,
       scores,
+      hasOverflow,
       sceneStart,
       sceneEnd
     };
@@ -244,7 +256,8 @@ function buildCompositionData(config) {
       totalDuration
     },
     theme: {
-      radarAxes: REQUIRED_AXES
+      radarAxes: REQUIRED_AXES,
+      ...getRadarScaleConfig(config.theme)
     },
     animation: config.animation,
     radarGridMarkup: buildRadarGridMarkup(),

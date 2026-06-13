@@ -12,16 +12,29 @@ function assert(condition, message) {
 }
 
 function validateScores(scores) {
+  const radarScaleMax = Number(scores.__radarScaleMax || 10);
+  const radarOverflowMax = Number(scores.__radarOverflowMax || radarScaleMax);
   assert(scores && typeof scores === "object", "`scores` must be an object.");
   const keys = Object.keys(scores);
-  assert(keys.length === REQUIRED_AXES.length, "`scores` must contain exactly 6 axes.");
+  assert(keys.filter((key) => !key.startsWith("__")).length === REQUIRED_AXES.length, "`scores` must contain exactly 6 axes.");
 
   for (const axis of REQUIRED_AXES) {
     assert(axis in scores, `Missing score axis: ${axis}`);
     const value = Number(scores[axis]);
     assert(Number.isFinite(value), `Score for ${axis} must be numeric.`);
-    assert(value >= 0 && value <= 10, `Score for ${axis} must be between 0 and 10.`);
+    assert(value >= 0 && value <= radarOverflowMax, `Score for ${axis} must be between 0 and ${radarOverflowMax}.`);
   }
+}
+
+function getRadarScaleConfig(theme) {
+  const radarScaleMax = Number(theme?.radarScaleMax ?? 10);
+  const radarOverflowMax = Number(theme?.radarOverflowMax ?? radarScaleMax);
+  assert(Number.isFinite(radarScaleMax) && radarScaleMax > 0, "`theme.radarScaleMax` must be positive.");
+  assert(Number.isFinite(radarOverflowMax) && radarOverflowMax >= radarScaleMax, "`theme.radarOverflowMax` must be >= `theme.radarScaleMax`.");
+  return {
+    radarScaleMax,
+    radarOverflowMax
+  };
 }
 
 function normalizeLookupKey(value) {
@@ -68,6 +81,7 @@ export function validateVideoConfig(config) {
     JSON.stringify(config.theme.radarAxes) === JSON.stringify(REQUIRED_AXES),
     "`theme.radarAxes` must match the fixed 6-axis order."
   );
+  getRadarScaleConfig(config.theme);
 
   for (const animationKey of REQUIRED_ANIMATIONS) {
     assert(
@@ -80,7 +94,11 @@ export function validateVideoConfig(config) {
     assert(typeof item.id === "string" && item.id.length > 0, "Each item requires `id`.");
     assert(typeof item.name === "string" && item.name.length > 0, `Item ${item.id} requires \`name\`.`);
     assert(typeof item.image === "string" && item.image.length > 0, `Item ${item.id} requires \`image\`.`);
+    item.scores.__radarScaleMax = Number(config.theme.radarScaleMax ?? 10);
+    item.scores.__radarOverflowMax = Number(config.theme.radarOverflowMax ?? item.scores.__radarScaleMax);
     validateScores(item.scores);
+    delete item.scores.__radarScaleMax;
+    delete item.scores.__radarOverflowMax;
   }
 }
 

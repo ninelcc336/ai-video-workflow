@@ -386,6 +386,15 @@ pre {
   filter: drop-shadow(0 0 24px rgba(255, 109, 61, 0.26));
 }
 
+.radar__data--overflow {
+  fill: rgba(255, 109, 61, 0.52);
+  stroke: rgba(255, 206, 138, 1);
+  stroke-width: 5.8;
+  filter:
+    drop-shadow(0 0 22px rgba(255, 109, 61, 0.34))
+    drop-shadow(0 0 42px rgba(255, 186, 117, 0.24));
+}
+
 .radar__data--scale-grow {
   animation:
     radar-scale-grow 1.1s cubic-bezier(0.2, 1, 0.35, 1),

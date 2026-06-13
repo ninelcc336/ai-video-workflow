@@ -8,7 +8,9 @@ const state = {
   config: null,
   currentIndex: 0,
   isPlaying: true,
-  timer: null
+  timer: null,
+  radarScaleMax: 10,
+  radarOverflowMax: 10
 };
 
 const elements = {
@@ -49,6 +51,10 @@ function validateConfig(config) {
   assert(Number(config.meta?.durationPerItem) > 0, "`meta.durationPerItem` must be positive.");
   assert(Array.isArray(config.theme?.radarAxes), "Missing `theme.radarAxes`.");
   assert(JSON.stringify(config.theme.radarAxes) === JSON.stringify(AXES), "Radar axes must stay in the fixed 6-axis order.");
+  const radarScaleMax = Number(config.theme?.radarScaleMax ?? 10);
+  const radarOverflowMax = Number(config.theme?.radarOverflowMax ?? radarScaleMax);
+  assert(Number.isFinite(radarScaleMax) && radarScaleMax > 0, "`theme.radarScaleMax` must be positive.");
+  assert(Number.isFinite(radarOverflowMax) && radarOverflowMax >= radarScaleMax, "`theme.radarOverflowMax` must be >= `theme.radarScaleMax`.");
   assert(Array.isArray(config.items) && config.items.length > 0, "`items` must be a non-empty array.");
 
   for (const item of config.items) {
@@ -59,7 +65,7 @@ function validateConfig(config) {
     for (const axis of AXES) {
       const score = Number(item.scores[axis]);
       assert(Number.isFinite(score), `Item ${item.id} is missing score: ${axis}`);
-      assert(score >= 0 && score <= 10, `Item ${item.id} score out of range for ${axis}.`);
+      assert(score >= 0 && score <= radarOverflowMax, `Item ${item.id} score out of range for ${axis}.`);
     }
   }
 }
@@ -141,8 +147,12 @@ function pointsToAttribute(points) {
   return points.map((point) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(" ");
 }
 
-function scoreMapToNormalizedArray(scores) {
-  return AXES.map((axis) => Number(scores[axis]) / 10);
+function scoreMapToNormalizedArray(scores, radarScaleMax) {
+  return AXES.map((axis) => Number(scores[axis]) / radarScaleMax);
+}
+
+function hasOverflowScore(scores, radarScaleMax) {
+  return AXES.some((axis) => Number(scores[axis]) > radarScaleMax);
 }
 
 function resetAnimationClass(element, className) {
@@ -166,12 +176,15 @@ function setOperatorAnimation(animationName) {
   elements.operatorImage.setAttribute("class", `operator operator--${animationName}`);
 }
 
-function setRadarAnimation(animationName) {
-  elements.radarData.setAttribute("class", `radar__data radar__data--${animationName}`);
+function setRadarAnimation(animationName, isOverflow) {
+  const overflowClass = isOverflow ? " radar__data--overflow" : "";
+  elements.radarData.setAttribute("class", `radar__data radar__data--${animationName}${overflowClass}`);
 }
 
 function renderMeta() {
   const { config } = state;
+  state.radarScaleMax = Number(config.theme?.radarScaleMax ?? 10);
+  state.radarOverflowMax = Number(config.theme?.radarOverflowMax ?? state.radarScaleMax);
   elements.videoTitle.textContent = config.meta.title;
   elements.itemCount.textContent = `${config.items.length}`;
   elements.durationPerItem.textContent = `${config.meta.durationPerItem}s`;
@@ -190,10 +203,10 @@ function renderItem(index) {
   elements.statusLine.textContent = `${index + 1} / ${state.config.items.length}  ${displayName}`;
 
   setOperatorAnimation(state.config.animation.characterEnter);
-  setRadarAnimation(state.config.animation.radarBuild);
+  setRadarAnimation(state.config.animation.radarBuild, hasOverflowScore(item.scores, state.radarScaleMax));
   applyTransitionEffect(state.config.animation.transition);
 
-  const normalizedScores = scoreMapToNormalizedArray(item.scores);
+  const normalizedScores = scoreMapToNormalizedArray(item.scores, state.radarScaleMax);
   const points = getPolygonPoints(normalizedScores);
   elements.radarData.setAttribute("points", pointsToAttribute(points));
 }
