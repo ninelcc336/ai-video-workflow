@@ -1,21 +1,14 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadVideoConfig, REQUIRED_AXES } from "./video-config.mjs";
+import { loadVideoConfig } from "./video-config.mjs";
 import { loadActiveVideoPath } from "./active-video-config.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
-const templatePath = path.join(rootDir, "video-src", "index.template.html");
 const outputPath = path.join(rootDir, "index.html");
 const outputMetaPath = path.join(rootDir, "meta.json");
-
-const WIDTH = 1920;
-const HEIGHT = 1080;
-const FPS = 30;
-const OUTER_RADIUS = 254;
-const CENTER = 320;
 const ITEM_GAP_SECONDS = 0;
 
 function getRadarScaleConfig(theme) {
@@ -31,13 +24,13 @@ function getAngle(index) {
   return (-90 + index * 60) * (Math.PI / 180);
 }
 
-function getPolygonPoints(values) {
+function getPolygonPoints(values, radarCenter, radarOuterRadius) {
   return values.map((value, index) => {
     const angle = getAngle(index);
-    const radius = OUTER_RADIUS * value;
+    const radius = radarOuterRadius * value;
     return {
-      x: CENTER + radius * Math.cos(angle),
-      y: CENTER + radius * Math.sin(angle)
+      x: radarCenter + radius * Math.cos(angle),
+      y: radarCenter + radius * Math.sin(angle)
     };
   });
 }
@@ -46,23 +39,23 @@ function pointsToAttribute(points) {
   return points.map((point) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(" ");
 }
 
-function buildRadarGridMarkup() {
+function buildRadarGridMarkup(radarAxes, radarCenter, radarOuterRadius) {
   const ringCount = 5;
   const parts = [];
 
   for (let ring = ringCount; ring >= 1; ring -= 1) {
     const scale = ring / ringCount;
-    const normalized = REQUIRED_AXES.map(() => scale);
+    const normalized = radarAxes.map(() => scale);
     parts.push(
-      `<polygon class="radar-grid-ring" points="${pointsToAttribute(getPolygonPoints(normalized))}"></polygon>`
+      `<polygon class="radar-grid-ring" points="${pointsToAttribute(getPolygonPoints(normalized, radarCenter, radarOuterRadius))}"></polygon>`
     );
   }
 
-  for (let index = 0; index < REQUIRED_AXES.length; index += 1) {
+  for (let index = 0; index < radarAxes.length; index += 1) {
     const angle = getAngle(index);
-    const x = CENTER + OUTER_RADIUS * Math.cos(angle);
-    const y = CENTER + OUTER_RADIUS * Math.sin(angle);
-    parts.push(`<line class="radar-grid-axis" x1="${CENTER}" y1="${CENTER}" x2="${x}" y2="${y}"></line>`);
+    const x = radarCenter + radarOuterRadius * Math.cos(angle);
+    const y = radarCenter + radarOuterRadius * Math.sin(angle);
+    parts.push(`<line class="radar-grid-axis" x1="${radarCenter}" y1="${radarCenter}" x2="${x}" y2="${y}"></line>`);
   }
 
   return parts.join("\n");
@@ -74,6 +67,18 @@ function normalizeImagePath(imagePath) {
   }
 
   return imagePath;
+}
+
+function normalizeMediaPath(mediaPath) {
+  if (!mediaPath) {
+    return "";
+  }
+
+  if (mediaPath.startsWith("/")) {
+    return `.${mediaPath}`;
+  }
+
+  return mediaPath;
 }
 
 function escapeHtml(text) {
@@ -166,7 +171,7 @@ function createTimelineSnippet(item, index, animation, isLastItem, nextItemId) {
   return lines.join("\n      ");
 }
 
-function buildSceneMarkup(item, index, radarGridMarkup, radarAxes, durationPerItem) {
+function buildSceneMarkup(item, index, radarGridMarkup, radarAxes, durationPerItem, renderConfig) {
   const labels = [
     { text: radarAxes[0], className: "radar-label radar-label--top" },
     { text: radarAxes[1], className: "radar-label radar-label--top-right" },
@@ -209,7 +214,7 @@ function buildSceneMarkup(item, index, radarGridMarkup, radarAxes, durationPerIt
             <div class="scene__right">
               <div class="radar">
                 ${labelMarkup}
-                <svg viewBox="0 0 640 640" aria-label="radar chart">
+                <svg viewBox="0 0 ${renderConfig.radarViewBox} ${renderConfig.radarViewBox}" aria-label="radar chart">
                   <g>${radarGridMarkup}</g>
                   <polygon id="radar-data-${index}" class="radar-data${item.hasOverflow ? " radar-data--overflow" : ""}" points="${item.points}"></polygon>
                 </svg>
@@ -220,15 +225,17 @@ function buildSceneMarkup(item, index, radarGridMarkup, radarAxes, durationPerIt
       </section>`;
 }
 
-function buildItemData(config) {
+function buildItemData(config, template) {
+  const radarAxes = template.constraints.radarAxes;
+  const renderConfig = template.render;
   const { radarScaleMax } = getRadarScaleConfig(config.theme);
   return config.items.map((item, index) => {
     const displayName = item.displayName || item.name;
-    const scores = REQUIRED_AXES.map((axis) => Number(item.scores[axis]) / radarScaleMax);
-    const points = pointsToAttribute(getPolygonPoints(scores));
+    const scores = radarAxes.map((axis) => Number(item.scores[axis]) / radarScaleMax);
+    const points = pointsToAttribute(getPolygonPoints(scores, renderConfig.radarCenter, renderConfig.radarOuterRadius));
     const sceneStart = index * (Number(config.meta.durationPerItem) + ITEM_GAP_SECONDS);
     const sceneEnd = sceneStart + Number(config.meta.durationPerItem);
-    const hasOverflow = REQUIRED_AXES.some((axis) => Number(item.scores[axis]) > radarScaleMax);
+    const hasOverflow = radarAxes.some((axis) => Number(item.scores[axis]) > radarScaleMax);
 
     return {
       id: item.id,
@@ -245,31 +252,43 @@ function buildItemData(config) {
 }
 
 function buildCompositionData(config) {
-  const items = buildItemData(config);
+  const template = arguments[1];
+  const items = buildItemData(config, template);
   const totalDuration = items.length * Number(config.meta.durationPerItem);
+  const audio = config.audio?.bgm
+    ? {
+        bgm: normalizeMediaPath(config.audio.bgm),
+        volume: Number(config.audio.volume ?? 0.35)
+      }
+    : null;
   return {
     meta: {
       title: config.meta.title,
       durationPerItem: Number(config.meta.durationPerItem),
-      fps: FPS,
-      width: WIDTH,
-      height: HEIGHT,
+      fps: Number(template.render.fps),
+      width: Number(template.render.width),
+      height: Number(template.render.height),
       totalDuration
     },
+    audio,
     theme: {
-      radarAxes: REQUIRED_AXES,
+      radarAxes: template.constraints.radarAxes,
       ...getRadarScaleConfig(config.theme)
     },
     animation: config.animation,
-    radarGridMarkup: buildRadarGridMarkup(),
+    radarGridMarkup: buildRadarGridMarkup(
+      template.constraints.radarAxes,
+      Number(template.render.radarCenter),
+      Number(template.render.radarOuterRadius)
+    ),
     items
   };
 }
 
 async function main() {
   const fileArg = process.argv[2] || await loadActiveVideoPath(rootDir);
-  const { config } = await loadVideoConfig(rootDir, fileArg);
-  const compositionData = buildCompositionData(config);
+  const { config, template } = await loadVideoConfig(rootDir, fileArg);
+  const compositionData = buildCompositionData(config, template);
   const sceneMarkup = compositionData.items
     .map((item, index) =>
       buildSceneMarkup(
@@ -277,7 +296,8 @@ async function main() {
         index,
         compositionData.radarGridMarkup,
         compositionData.theme.radarAxes,
-        compositionData.meta.durationPerItem
+        compositionData.meta.durationPerItem,
+        template.render
       )
     )
     .join("\n");
@@ -292,10 +312,24 @@ async function main() {
       )
     )
     .join("\n\n      ");
+  const audioMarkup = compositionData.audio
+    ? `
+    <audio
+      id="bgm-track"
+      class="clip"
+      src="${escapeHtml(compositionData.audio.bgm)}"
+      data-start="0"
+      data-duration="${compositionData.meta.totalDuration}"
+      data-track-index="9"
+      data-volume="${compositionData.audio.volume}"
+    ></audio>`
+    : "";
 
-  const template = await readFile(templatePath, "utf8");
-  const html = template
+  const templateHtml = await readFile(path.join(rootDir, template.render.templatePath), "utf8");
+  const html = templateHtml
     .replaceAll("__TOTAL_DURATION__", String(compositionData.meta.totalDuration))
+    .replaceAll("__RADAR_RENDER_CENTER__", String(template.render.radarCenter))
+    .replace("__AUDIO_MARKUP__", audioMarkup)
     .replace("__SCENES_MARKUP__", sceneMarkup)
     .replace("__TIMELINE_SCRIPT__", timelineScript);
 
@@ -307,6 +341,7 @@ async function main() {
       {
         id: "radar-panel-video",
         name: escapeHtml(config.meta.title),
+        templateId: template.id,
         createdAt: new Date().toISOString()
       },
       null,

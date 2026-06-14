@@ -1,0 +1,26 @@
+{
+  "id": "operator-radar-landscape-v1",
+  "name": "干员横版雷达面板",
+  "family": "operator-radar-panel",
+  "description": "左侧人物立绘、左上显示名、右侧六维雷达图的横版模板。",
+  "constraints": {
+    "radarAxes": ["信息", "机动", "压制", "生存", "功能", "难度"]
+  },
+  "preview": {
+    "aspectRatio": "16 / 9",
+    "stageWidth": 1920,
+    "stageHeight": 1080,
+    "radarViewBox": 680,
+    "radarCenter": 340,
+    "radarOuterRadius": 230
+  },
+  "render": {
+    "templatePath": "video-src/index.template.html",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "radarViewBox": 720,
+    "radarCenter": 360,
+    "radarOuterRadius": 254
+  }
+}

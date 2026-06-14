@@ -1,0 +1,8 @@
+{
+  "templates": [
+    {
+      "id": "operator-radar-landscape-v1",
+      "manifestPath": "/data/templates/operator-radar-landscape-v1.json"
+    }
+  ]
+}

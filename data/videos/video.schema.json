@@ -2,8 +2,11 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Radar Panel Video Config",
   "type": "object",
-  "required": ["meta", "theme", "animation", "items"],
+  "required": ["templateId", "meta", "theme", "animation", "items"],
   "properties": {
+    "templateId": {
+      "type": "string"
+    },
     "meta": {
       "type": "object",
       "required": ["title", "series", "topic", "durationPerItem"]
@@ -22,4 +25,3 @@
     }
   }
 }
-

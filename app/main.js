@@ -1,16 +1,15 @@
 const ACTIVE_VIDEO_PATH = "/data/videos/active-video.json";
+const TEMPLATE_REGISTRY_PATH = "/data/templates/registry.json";
 const OPERATOR_IMAGE_MAP_PATH = "/data/assets/operator-image-map.json";
 const AXES = ["信息", "机动", "压制", "生存", "功能", "难度"];
-const CENTER = 300;
-const OUTER_RADIUS = 230;
 
 const state = {
   config: null,
+  template: null,
   currentIndex: 0,
   isPlaying: true,
   timer: null,
-  radarScaleMax: 10,
-  radarOverflowMax: 10
+  radarScaleMax: 10
 };
 
 const elements = {
@@ -26,8 +25,11 @@ const elements = {
   radarBuild: document.querySelector("#radar-build"),
   radarData: document.querySelector("#radar-data"),
   radarGrid: document.querySelector("#radar-grid"),
+  radarLabels: Array.from(document.querySelectorAll(".radar__label")),
   radarRoot: document.querySelector("#radar-root"),
+  radarSvg: document.querySelector("#radar-svg"),
   stage: document.querySelector("#video-stage"),
+  stageWrap: document.querySelector("#stage-wrap"),
   statusLine: document.querySelector("#status-line"),
   togglePlay: document.querySelector("#toggle-play"),
   transitionMode: document.querySelector("#transition-mode"),
@@ -61,11 +63,14 @@ function assert(condition, message) {
 }
 
 function validateConfig(config) {
+  const template = arguments[1];
   assert(config && typeof config === "object", "Config root must be an object.");
+  assert(config.templateId, "Missing `templateId`.");
   assert(config.meta?.title, "Missing `meta.title`.");
   assert(Number(config.meta?.durationPerItem) > 0, "`meta.durationPerItem` must be positive.");
   assert(Array.isArray(config.theme?.radarAxes), "Missing `theme.radarAxes`.");
-  assert(JSON.stringify(config.theme.radarAxes) === JSON.stringify(AXES), "Radar axes must stay in the fixed 6-axis order.");
+  const templateAxes = template?.constraints?.radarAxes || AXES;
+  assert(JSON.stringify(config.theme.radarAxes) === JSON.stringify(templateAxes), "Radar axes must match the selected template.");
   const radarScaleMax = Number(config.theme?.radarScaleMax ?? 10);
   const radarOverflowMax = Number(config.theme?.radarOverflowMax ?? radarScaleMax);
   assert(Number.isFinite(radarScaleMax) && radarScaleMax > 0, "`theme.radarScaleMax` must be positive.");
@@ -83,6 +88,26 @@ function validateConfig(config) {
       assert(score >= 0 && score <= radarOverflowMax, `Item ${item.id} score out of range for ${axis}.`);
     }
   }
+}
+
+async function loadTemplate(templateId) {
+  const registryResponse = await fetch(TEMPLATE_REGISTRY_PATH, { cache: "no-store" });
+  if (!registryResponse.ok) {
+    throw new Error(`Failed to load template registry: ${registryResponse.status}`);
+  }
+
+  const registry = await registryResponse.json();
+  const entry = registry?.templates?.find((item) => item.id === templateId);
+  if (!entry?.manifestPath) {
+    throw new Error(`Unknown template id: ${templateId}`);
+  }
+
+  const manifestResponse = await fetch(entry.manifestPath, { cache: "no-store" });
+  if (!manifestResponse.ok) {
+    throw new Error(`Failed to load template manifest: ${manifestResponse.status}`);
+  }
+
+  return manifestResponse.json();
 }
 
 function normalizeLookupKey(value) {
@@ -125,19 +150,22 @@ function resolveConfigImages(config, imageMap) {
 }
 
 function buildRadarGrid() {
+  const radarAxes = state.template?.constraints?.radarAxes || AXES;
+  const radarCenter = Number(state.template?.preview?.radarCenter ?? 300);
+  const radarOuterRadius = Number(state.template?.preview?.radarOuterRadius ?? 230);
   const svgParts = [];
   const ringCount = 5;
 
   for (let ring = ringCount; ring >= 1; ring -= 1) {
     const scale = ring / ringCount;
-    svgParts.push(`<polygon class="radar__grid-ring" points="${pointsToAttribute(getPolygonPoints([scale, scale, scale, scale, scale, scale]))}"></polygon>`);
+    svgParts.push(`<polygon class="radar__grid-ring" points="${pointsToAttribute(getPolygonPoints(radarAxes.map(() => scale), radarCenter, radarOuterRadius))}"></polygon>`);
   }
 
-  for (let index = 0; index < AXES.length; index += 1) {
+  for (let index = 0; index < radarAxes.length; index += 1) {
     const angle = getAngle(index);
-    const x = CENTER + OUTER_RADIUS * Math.cos(angle);
-    const y = CENTER + OUTER_RADIUS * Math.sin(angle);
-    svgParts.push(`<line class="radar__grid-axis" x1="${CENTER}" y1="${CENTER}" x2="${x}" y2="${y}"></line>`);
+    const x = radarCenter + radarOuterRadius * Math.cos(angle);
+    const y = radarCenter + radarOuterRadius * Math.sin(angle);
+    svgParts.push(`<line class="radar__grid-axis" x1="${radarCenter}" y1="${radarCenter}" x2="${x}" y2="${y}"></line>`);
   }
 
   elements.radarGrid.innerHTML = svgParts.join("");
@@ -147,13 +175,13 @@ function getAngle(index) {
   return (-90 + index * 60) * (Math.PI / 180);
 }
 
-function getPolygonPoints(values) {
+function getPolygonPoints(values, radarCenter, radarOuterRadius) {
   return values.map((value, index) => {
     const angle = getAngle(index);
-    const radius = OUTER_RADIUS * value;
+    const radius = radarOuterRadius * value;
     return {
-      x: CENTER + radius * Math.cos(angle),
-      y: CENTER + radius * Math.sin(angle)
+      x: radarCenter + radius * Math.cos(angle),
+      y: radarCenter + radius * Math.sin(angle)
     };
   });
 }
@@ -163,11 +191,13 @@ function pointsToAttribute(points) {
 }
 
 function scoreMapToNormalizedArray(scores, radarScaleMax) {
-  return AXES.map((axis) => Number(scores[axis]) / radarScaleMax);
+  const radarAxes = state.template?.constraints?.radarAxes || AXES;
+  return radarAxes.map((axis) => Number(scores[axis]) / radarScaleMax);
 }
 
 function hasOverflowScore(scores, radarScaleMax) {
-  return AXES.some((axis) => Number(scores[axis]) > radarScaleMax);
+  const radarAxes = state.template?.constraints?.radarAxes || AXES;
+  return radarAxes.some((axis) => Number(scores[axis]) > radarScaleMax);
 }
 
 function resetAnimationClass(element, className) {
@@ -199,7 +229,6 @@ function setRadarAnimation(animationName, isOverflow) {
 function renderMeta() {
   const { config } = state;
   state.radarScaleMax = Number(config.theme?.radarScaleMax ?? 10);
-  state.radarOverflowMax = Number(config.theme?.radarOverflowMax ?? state.radarScaleMax);
   elements.videoTitle.textContent = config.meta.title;
   elements.itemCount.textContent = `${config.items.length}`;
   elements.durationPerItem.textContent = `${config.meta.durationPerItem}s`;
@@ -211,6 +240,8 @@ function renderMeta() {
 function renderItem(index) {
   const item = state.config.items[index];
   const displayName = item.displayName || item.name;
+  const radarCenter = Number(state.template?.preview?.radarCenter ?? 300);
+  const radarOuterRadius = Number(state.template?.preview?.radarOuterRadius ?? 230);
 
   elements.displayName.textContent = displayName;
   elements.operatorImage.src = item.image;
@@ -222,8 +253,25 @@ function renderItem(index) {
   applyTransitionEffect(state.config.animation.transition);
 
   const normalizedScores = scoreMapToNormalizedArray(item.scores, state.radarScaleMax);
-  const points = getPolygonPoints(normalizedScores);
+  const points = getPolygonPoints(normalizedScores, radarCenter, radarOuterRadius);
   elements.radarData.setAttribute("points", pointsToAttribute(points));
+}
+
+function applyTemplate(template) {
+  state.template = template;
+  if (template.family !== "operator-radar-panel") {
+    throw new Error(`Unsupported preview template family: ${template.family}`);
+  }
+
+  elements.stageWrap.style.setProperty("--stage-aspect-ratio", template.preview.aspectRatio);
+  elements.radarSvg.setAttribute("viewBox", `0 0 ${template.preview.radarViewBox} ${template.preview.radarViewBox}`);
+  elements.radarData.style.transformOrigin = `${template.preview.radarCenter}px ${template.preview.radarCenter}px`;
+  const radarAxes = template.constraints?.radarAxes || AXES;
+  radarAxes.forEach((axis, index) => {
+    if (elements.radarLabels[index]) {
+      elements.radarLabels[index].textContent = axis;
+    }
+  });
 }
 
 function clearTimer() {
@@ -271,7 +319,12 @@ async function loadConfig() {
   }
 
   const [config, rawImageMap] = await Promise.all([configResponse.json(), imageMapResponse.json()]);
-  return resolveConfigImages(config, normalizeImageMap(rawImageMap));
+  const resolvedConfig = resolveConfigImages(config, normalizeImageMap(rawImageMap));
+  const template = await loadTemplate(resolvedConfig.templateId);
+  return {
+    config: resolvedConfig,
+    template
+  };
 }
 
 function bindEvents() {
@@ -288,9 +341,10 @@ function bindEvents() {
 
 async function bootstrap() {
   try {
+    const { config, template } = await loadConfig();
+    validateConfig(config, template);
+    applyTemplate(template);
     buildRadarGrid();
-    const config = await loadConfig();
-    validateConfig(config);
     state.config = config;
     renderMeta();
     bindEvents();

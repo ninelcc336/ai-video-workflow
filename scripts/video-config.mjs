@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { loadTemplateById } from "./template-registry.mjs";
 
 export const REQUIRED_AXES = ["信息", "机动", "压制", "生存", "功能", "难度"];
 export const REQUIRED_ANIMATIONS = ["characterEnter", "radarBuild", "transition"];
@@ -37,6 +38,23 @@ function getRadarScaleConfig(theme) {
   };
 }
 
+function validateAudioConfig(audio) {
+  if (audio == null) {
+    return;
+  }
+
+  assert(audio && typeof audio === "object", "`audio` must be an object.");
+
+  if (audio.bgm != null) {
+    assert(typeof audio.bgm === "string", "`audio.bgm` must be a string.");
+  }
+
+  if (audio.volume != null) {
+    const volume = Number(audio.volume);
+    assert(Number.isFinite(volume) && volume >= 0 && volume <= 1, "`audio.volume` must be between 0 and 1.");
+  }
+}
+
 function normalizeLookupKey(value) {
   return String(value || "").trim().toLowerCase();
 }
@@ -67,19 +85,27 @@ function normalizeImageMap(rawMap) {
 }
 
 export function validateVideoConfig(config) {
+  const template = arguments[1];
   assert(config && typeof config === "object", "Config root must be an object.");
+  assert(typeof config.templateId === "string" && config.templateId.length > 0, "Missing `templateId`.");
   assert(config.meta && typeof config.meta === "object", "Missing `meta`.");
   assert(config.theme && typeof config.theme === "object", "Missing `theme`.");
   assert(config.animation && typeof config.animation === "object", "Missing `animation`.");
   assert(Array.isArray(config.items) && config.items.length > 0, "`items` must be a non-empty array.");
+  validateAudioConfig(config.audio);
 
   assert(typeof config.meta.title === "string" && config.meta.title.length > 0, "`meta.title` is required.");
   assert(Number(config.meta.durationPerItem) > 0, "`meta.durationPerItem` must be positive.");
 
   assert(Array.isArray(config.theme.radarAxes), "`theme.radarAxes` must be an array.");
+  const templateAxes = template?.constraints?.radarAxes || REQUIRED_AXES;
   assert(
-    JSON.stringify(config.theme.radarAxes) === JSON.stringify(REQUIRED_AXES),
-    "`theme.radarAxes` must match the fixed 6-axis order."
+    JSON.stringify(config.theme.radarAxes) === JSON.stringify(templateAxes),
+    "`theme.radarAxes` must match the selected template axes."
+  );
+  assert(
+    JSON.stringify(templateAxes) === JSON.stringify(REQUIRED_AXES),
+    "Current renderer only supports the fixed 6-axis radar template family."
   );
   getRadarScaleConfig(config.theme);
 
@@ -106,9 +132,10 @@ export async function loadVideoConfig(rootDir, fileArg) {
   assert(fileArg, "A path to video.json is required.");
   const absolutePath = path.resolve(rootDir, fileArg);
   const raw = await readFile(absolutePath, "utf8");
+  const parsed = JSON.parse(raw);
+  const template = await loadTemplateById(rootDir, parsed.templateId);
   const imageMapRaw = await readFile(path.join(rootDir, OPERATOR_IMAGE_MAP_PATH), "utf8");
   const imageMap = normalizeImageMap(JSON.parse(imageMapRaw));
-  const parsed = JSON.parse(raw);
   const config = {
     ...parsed,
     items: parsed.items.map((item) => ({
@@ -116,9 +143,10 @@ export async function loadVideoConfig(rootDir, fileArg) {
       image: resolveItemImage(item, imageMap)
     }))
   };
-  validateVideoConfig(config);
+  validateVideoConfig(config, template);
   return {
     absolutePath,
-    config
+    config,
+    template
   };
 }

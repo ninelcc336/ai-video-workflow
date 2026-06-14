@@ -57,7 +57,7 @@
       </section>
 
       <section class="stage-shell">
-        <div class="stage-wrap">
+        <div class="stage-wrap" id="stage-wrap">
           <div class="flash-layer" id="flash-layer"></div>
           <div class="video-stage" id="video-stage">
             <div class="video-stage__backdrop">
@@ -84,7 +84,7 @@
                 <div class="radar__label radar__label--bottom">生存</div>
                 <div class="radar__label radar__label--bottom-left">功能</div>
                 <div class="radar__label radar__label--top-left">难度</div>
-                <svg viewBox="0 0 600 600" aria-label="radar chart">
+                <svg id="radar-svg" viewBox="0 0 600 600" aria-label="radar chart">
                   <g id="radar-grid"></g>
                   <polygon id="radar-data" class="radar__data radar__data--scale-grow" points=""></polygon>
                 </svg>

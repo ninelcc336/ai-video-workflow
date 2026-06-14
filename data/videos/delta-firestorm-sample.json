@@ -1,4 +1,5 @@
 {
+  "templateId": "operator-radar-landscape-v1",
   "meta": {
     "title": "烽火地带干员强度面板",
     "series": "delta-force",
@@ -15,6 +16,10 @@
     "characterEnter": "slide-left-soft",
     "radarBuild": "scale-grow",
     "transition": "hard-cut"
+  },
+  "audio": {
+    "bgm": "/assets/audio/miracle.mp3",
+    "volume": 0.35
   },
   "items": [
     {

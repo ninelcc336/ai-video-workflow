@@ -9,8 +9,8 @@ const rootDir = path.resolve(__dirname, "..");
 
 async function main() {
   const fileArg = process.argv[2] || await loadActiveVideoPath(rootDir);
-  const { absolutePath } = await loadVideoConfig(rootDir, fileArg);
-  console.log(`Config valid: ${absolutePath}`);
+  const { absolutePath, template } = await loadVideoConfig(rootDir, fileArg);
+  console.log(`Config valid: ${absolutePath} -> ${template.id}`);
 }
 
 main().catch((error) => {

@@ -13,8 +13,12 @@
 
 - [data/videos/active-video.json](/E:/ai-list/ai-video/data/videos/active-video.json)
   当前启用的视频配置入口。以后切换到别的 JSON，只改这里。
+- [data/templates/registry.json](/E:/ai-list/ai-video/data/templates/registry.json)
+  模板注册表索引。这里登记仓库内有哪些可用模板。
+- [data/templates/operator-radar-landscape-v1.json](/E:/ai-list/ai-video/data/templates/operator-radar-landscape-v1.json)
+  当前默认模板的 manifest。包含模板 id、适用 family、尺寸和雷达参数。
 - [data/videos/delta-firestorm-sample.json](/E:/ai-list/ai-video/data/videos/delta-firestorm-sample.json)
-  当前默认视频的数据文件。标题、节奏、动画、干员列表、六维分数都在这里。
+  当前默认视频的数据文件。标题、模板、节奏、动画、干员列表、六维分数都在这里。
 - [data/assets/operator-image-map.json](/E:/ai-list/ai-video/data/assets/operator-image-map.json)
   干员名称/外号/别名到图片路径的映射表。
 - [assets/operators](/E:/ai-list/ai-video/assets/operators)
@@ -62,6 +66,37 @@
 - `npm run hf:inspect`
 - `npm run hf:render`
 - `npm run dev` 后打开的预览页
+
+## 模板注册表
+
+当前仓库已经从“单模板硬编码”升级成了“模板注册表 + 视频数据引用模板”结构。
+
+模板索引在 [data/templates/registry.json](/E:/ai-list/ai-video/data/templates/registry.json)，例如：
+
+```json
+{
+  "templates": [
+    {
+      "id": "operator-radar-landscape-v1",
+      "manifestPath": "/data/templates/operator-radar-landscape-v1.json"
+    }
+  ]
+}
+```
+
+模板 manifest 在 [data/templates/operator-radar-landscape-v1.json](/E:/ai-list/ai-video/data/templates/operator-radar-landscape-v1.json)，当前主要定义：
+
+- 模板 `id`
+- 模板 `family`
+- 固定支持的雷达维度
+- 预览尺寸和雷达参数
+- 渲染尺寸、fps、模板 HTML 路径和雷达参数
+
+当前这一步的价值是：
+
+- 视频数据不再默认绑定唯一模板
+- 构建和预览都从模板 manifest 读取关键参数
+- 后续加第二套模板时，只需要新增 manifest 并登记到注册表
 
 ## 安装与环境
 
@@ -150,6 +185,7 @@ npm run hf:render
 
 ```json
 {
+  "templateId": "operator-radar-landscape-v1",
   "meta": {
     "title": "烽火地带干员强度面板",
     "series": "delta-force",
@@ -188,6 +224,8 @@ npm run hf:render
 
 ### 关键字段说明
 
+- `templateId`
+  当前视频使用哪个模板。必须命中模板注册表中的 `id`。
 - `meta.title`
   视频标题。
 - `meta.durationPerItem`
@@ -275,6 +313,21 @@ npm run hf:render
 5. 执行 `npm run dev` 预览
 6. 执行 `npm run hf:render` 导出
 
+## 新增一个模板的推荐步骤
+
+如果你后面要新增第二套模板，例如“武器评分横版”：
+
+1. 新建一个模板 manifest，例如 [data/templates/operator-radar-landscape-v1.json](/E:/ai-list/ai-video/data/templates/operator-radar-landscape-v1.json) 的副本
+2. 修改 manifest 里的 `id`、尺寸、雷达参数、渲染模板路径
+3. 在 [data/templates/registry.json](/E:/ai-list/ai-video/data/templates/registry.json) 中登记新的 `id` 和 `manifestPath`
+4. 新建或复用对应的视频 HTML 模板
+5. 在视频 JSON 中把 `templateId` 改成新的模板 id
+6. 执行 `npm run validate:sample`
+7. 执行 `npm run build:video`
+8. 执行 `npm run hf:inspect`
+
+当前实现仍然只支持 `operator-radar-panel` 这个模板 family，也就是同一类“人物 + 六维雷达”结构。注册表和 manifest 已经搭好，后续如果要支持完全不同的版式，再继续扩 preview/render family 即可。
+
 ## 当前默认输出参数
 
 - 画幅：`1920x1080`
@@ -310,7 +363,9 @@ npm run hf:render
 
 - [data/videos/active-video.json](/E:/ai-list/ai-video/data/videos/active-video.json)
   切换当前使用哪个视频数据文件
+- [data/templates/registry.json](/E:/ai-list/ai-video/data/templates/registry.json)
+  管理仓库中有哪些模板
 - [data/videos/delta-firestorm-sample.json](/E:/ai-list/ai-video/data/videos/delta-firestorm-sample.json)
-  改标题、角色、分数、时长、动画
+  改模板、标题、角色、分数、时长、动画
 - [data/assets/operator-image-map.json](/E:/ai-list/ai-video/data/assets/operator-image-map.json)
   改干员图片映射
